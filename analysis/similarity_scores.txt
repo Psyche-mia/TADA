@@ -1,0 +1,498 @@
+Image: good/005.png
+  Text: 'good' Similarity: 0.2154
+  Text: 'contamination' Similarity: 0.2011
+  Text: 'broken_small' Similarity: 0.2207
+  Text: 'broken_large' Similarity: 0.2129
+--------------------------------------------------
+Image: good/010.png
+  Text: 'good' Similarity: 0.2124
+  Text: 'contamination' Similarity: 0.2031
+  Text: 'broken_small' Similarity: 0.2235
+  Text: 'broken_large' Similarity: 0.2226
+--------------------------------------------------
+Image: good/014.png
+  Text: 'good' Similarity: 0.2131
+  Text: 'contamination' Similarity: 0.2020
+  Text: 'broken_small' Similarity: 0.2218
+  Text: 'broken_large' Similarity: 0.2131
+--------------------------------------------------
+Image: good/016.png
+  Text: 'good' Similarity: 0.2128
+  Text: 'contamination' Similarity: 0.2021
+  Text: 'broken_small' Similarity: 0.2226
+  Text: 'broken_large' Similarity: 0.2189
+--------------------------------------------------
+Image: good/015.png
+  Text: 'good' Similarity: 0.2119
+  Text: 'contamination' Similarity: 0.2055
+  Text: 'broken_small' Similarity: 0.2243
+  Text: 'broken_large' Similarity: 0.2210
+--------------------------------------------------
+Image: good/019.png
+  Text: 'good' Similarity: 0.2140
+  Text: 'contamination' Similarity: 0.2086
+  Text: 'broken_small' Similarity: 0.2288
+  Text: 'broken_large' Similarity: 0.2223
+--------------------------------------------------
+Image: good/009.png
+  Text: 'good' Similarity: 0.2142
+  Text: 'contamination' Similarity: 0.2060
+  Text: 'broken_small' Similarity: 0.2275
+  Text: 'broken_large' Similarity: 0.2248
+--------------------------------------------------
+Image: good/000.png
+  Text: 'good' Similarity: 0.2127
+  Text: 'contamination' Similarity: 0.1997
+  Text: 'broken_small' Similarity: 0.2180
+  Text: 'broken_large' Similarity: 0.2133
+--------------------------------------------------
+Image: good/017.png
+  Text: 'good' Similarity: 0.2124
+  Text: 'contamination' Similarity: 0.1988
+  Text: 'broken_small' Similarity: 0.2172
+  Text: 'broken_large' Similarity: 0.2134
+--------------------------------------------------
+Image: good/018.png
+  Text: 'good' Similarity: 0.2087
+  Text: 'contamination' Similarity: 0.1990
+  Text: 'broken_small' Similarity: 0.2179
+  Text: 'broken_large' Similarity: 0.2138
+--------------------------------------------------
+Image: good/011.png
+  Text: 'good' Similarity: 0.2149
+  Text: 'contamination' Similarity: 0.2040
+  Text: 'broken_small' Similarity: 0.2240
+  Text: 'broken_large' Similarity: 0.2197
+--------------------------------------------------
+Image: good/007.png
+  Text: 'good' Similarity: 0.2162
+  Text: 'contamination' Similarity: 0.2046
+  Text: 'broken_small' Similarity: 0.2236
+  Text: 'broken_large' Similarity: 0.2207
+--------------------------------------------------
+Image: good/008.png
+  Text: 'good' Similarity: 0.2166
+  Text: 'contamination' Similarity: 0.1975
+  Text: 'broken_small' Similarity: 0.2160
+  Text: 'broken_large' Similarity: 0.2090
+--------------------------------------------------
+Image: good/013.png
+  Text: 'good' Similarity: 0.2172
+  Text: 'contamination' Similarity: 0.2086
+  Text: 'broken_small' Similarity: 0.2285
+  Text: 'broken_large' Similarity: 0.2230
+--------------------------------------------------
+Image: good/006.png
+  Text: 'good' Similarity: 0.2151
+  Text: 'contamination' Similarity: 0.1967
+  Text: 'broken_small' Similarity: 0.2138
+  Text: 'broken_large' Similarity: 0.2125
+--------------------------------------------------
+Image: good/012.png
+  Text: 'good' Similarity: 0.2125
+  Text: 'contamination' Similarity: 0.2039
+  Text: 'broken_small' Similarity: 0.2212
+  Text: 'broken_large' Similarity: 0.2207
+--------------------------------------------------
+Image: good/004.png
+  Text: 'good' Similarity: 0.2145
+  Text: 'contamination' Similarity: 0.2022
+  Text: 'broken_small' Similarity: 0.2256
+  Text: 'broken_large' Similarity: 0.2211
+--------------------------------------------------
+Image: good/003.png
+  Text: 'good' Similarity: 0.2140
+  Text: 'contamination' Similarity: 0.2032
+  Text: 'broken_small' Similarity: 0.2224
+  Text: 'broken_large' Similarity: 0.2203
+--------------------------------------------------
+Image: good/002.png
+  Text: 'good' Similarity: 0.2133
+  Text: 'contamination' Similarity: 0.2039
+  Text: 'broken_small' Similarity: 0.2231
+  Text: 'broken_large' Similarity: 0.2195
+--------------------------------------------------
+Image: good/001.png
+  Text: 'good' Similarity: 0.2147
+  Text: 'contamination' Similarity: 0.2061
+  Text: 'broken_small' Similarity: 0.2233
+  Text: 'broken_large' Similarity: 0.2194
+--------------------------------------------------
+Image: contamination/005.png
+  Text: 'good' Similarity: 0.2007
+  Text: 'contamination' Similarity: 0.2330
+  Text: 'broken_small' Similarity: 0.2430
+  Text: 'broken_large' Similarity: 0.2290
+--------------------------------------------------
+Image: contamination/010.png
+  Text: 'good' Similarity: 0.2150
+  Text: 'contamination' Similarity: 0.1975
+  Text: 'broken_small' Similarity: 0.2210
+  Text: 'broken_large' Similarity: 0.2138
+--------------------------------------------------
+Image: contamination/014.png
+  Text: 'good' Similarity: 0.2135
+  Text: 'contamination' Similarity: 0.2010
+  Text: 'broken_small' Similarity: 0.2254
+  Text: 'broken_large' Similarity: 0.2169
+--------------------------------------------------
+Image: contamination/016.png
+  Text: 'good' Similarity: 0.2100
+  Text: 'contamination' Similarity: 0.2046
+  Text: 'broken_small' Similarity: 0.2241
+  Text: 'broken_large' Similarity: 0.2188
+--------------------------------------------------
+Image: contamination/020.png
+  Text: 'good' Similarity: 0.2126
+  Text: 'contamination' Similarity: 0.2069
+  Text: 'broken_small' Similarity: 0.2223
+  Text: 'broken_large' Similarity: 0.2155
+--------------------------------------------------
+Image: contamination/015.png
+  Text: 'good' Similarity: 0.2085
+  Text: 'contamination' Similarity: 0.2015
+  Text: 'broken_small' Similarity: 0.2187
+  Text: 'broken_large' Similarity: 0.2098
+--------------------------------------------------
+Image: contamination/019.png
+  Text: 'good' Similarity: 0.2158
+  Text: 'contamination' Similarity: 0.2124
+  Text: 'broken_small' Similarity: 0.2330
+  Text: 'broken_large' Similarity: 0.2257
+--------------------------------------------------
+Image: contamination/009.png
+  Text: 'good' Similarity: 0.2178
+  Text: 'contamination' Similarity: 0.2040
+  Text: 'broken_small' Similarity: 0.2316
+  Text: 'broken_large' Similarity: 0.2273
+--------------------------------------------------
+Image: contamination/000.png
+  Text: 'good' Similarity: 0.2076
+  Text: 'contamination' Similarity: 0.2158
+  Text: 'broken_small' Similarity: 0.2342
+  Text: 'broken_large' Similarity: 0.2231
+--------------------------------------------------
+Image: contamination/017.png
+  Text: 'good' Similarity: 0.2067
+  Text: 'contamination' Similarity: 0.2164
+  Text: 'broken_small' Similarity: 0.2463
+  Text: 'broken_large' Similarity: 0.2358
+--------------------------------------------------
+Image: contamination/018.png
+  Text: 'good' Similarity: 0.2097
+  Text: 'contamination' Similarity: 0.2077
+  Text: 'broken_small' Similarity: 0.2294
+  Text: 'broken_large' Similarity: 0.2219
+--------------------------------------------------
+Image: contamination/011.png
+  Text: 'good' Similarity: 0.2134
+  Text: 'contamination' Similarity: 0.2058
+  Text: 'broken_small' Similarity: 0.2209
+  Text: 'broken_large' Similarity: 0.2169
+--------------------------------------------------
+Image: contamination/007.png
+  Text: 'good' Similarity: 0.2042
+  Text: 'contamination' Similarity: 0.2079
+  Text: 'broken_small' Similarity: 0.2341
+  Text: 'broken_large' Similarity: 0.2276
+--------------------------------------------------
+Image: contamination/008.png
+  Text: 'good' Similarity: 0.2147
+  Text: 'contamination' Similarity: 0.2042
+  Text: 'broken_small' Similarity: 0.2251
+  Text: 'broken_large' Similarity: 0.2208
+--------------------------------------------------
+Image: contamination/013.png
+  Text: 'good' Similarity: 0.2069
+  Text: 'contamination' Similarity: 0.2127
+  Text: 'broken_small' Similarity: 0.2237
+  Text: 'broken_large' Similarity: 0.2148
+--------------------------------------------------
+Image: contamination/006.png
+  Text: 'good' Similarity: 0.2076
+  Text: 'contamination' Similarity: 0.2276
+  Text: 'broken_small' Similarity: 0.2362
+  Text: 'broken_large' Similarity: 0.2309
+--------------------------------------------------
+Image: contamination/012.png
+  Text: 'good' Similarity: 0.2101
+  Text: 'contamination' Similarity: 0.2050
+  Text: 'broken_small' Similarity: 0.2242
+  Text: 'broken_large' Similarity: 0.2152
+--------------------------------------------------
+Image: contamination/004.png
+  Text: 'good' Similarity: 0.2128
+  Text: 'contamination' Similarity: 0.2022
+  Text: 'broken_small' Similarity: 0.2211
+  Text: 'broken_large' Similarity: 0.2175
+--------------------------------------------------
+Image: contamination/003.png
+  Text: 'good' Similarity: 0.2130
+  Text: 'contamination' Similarity: 0.2072
+  Text: 'broken_small' Similarity: 0.2260
+  Text: 'broken_large' Similarity: 0.2230
+--------------------------------------------------
+Image: contamination/002.png
+  Text: 'good' Similarity: 0.2145
+  Text: 'contamination' Similarity: 0.2046
+  Text: 'broken_small' Similarity: 0.2210
+  Text: 'broken_large' Similarity: 0.2186
+--------------------------------------------------
+Image: contamination/001.png
+  Text: 'good' Similarity: 0.2051
+  Text: 'contamination' Similarity: 0.2009
+  Text: 'broken_small' Similarity: 0.2197
+  Text: 'broken_large' Similarity: 0.2123
+--------------------------------------------------
+Image: broken_small/005.png
+  Text: 'good' Similarity: 0.2103
+  Text: 'contamination' Similarity: 0.1886
+  Text: 'broken_small' Similarity: 0.2124
+  Text: 'broken_large' Similarity: 0.2061
+--------------------------------------------------
+Image: broken_small/010.png
+  Text: 'good' Similarity: 0.2080
+  Text: 'contamination' Similarity: 0.2127
+  Text: 'broken_small' Similarity: 0.2420
+  Text: 'broken_large' Similarity: 0.2369
+--------------------------------------------------
+Image: broken_small/014.png
+  Text: 'good' Similarity: 0.2128
+  Text: 'contamination' Similarity: 0.2009
+  Text: 'broken_small' Similarity: 0.2232
+  Text: 'broken_large' Similarity: 0.2147
+--------------------------------------------------
+Image: broken_small/016.png
+  Text: 'good' Similarity: 0.2102
+  Text: 'contamination' Similarity: 0.2060
+  Text: 'broken_small' Similarity: 0.2256
+  Text: 'broken_large' Similarity: 0.2152
+--------------------------------------------------
+Image: broken_small/020.png
+  Text: 'good' Similarity: 0.2070
+  Text: 'contamination' Similarity: 0.1897
+  Text: 'broken_small' Similarity: 0.2186
+  Text: 'broken_large' Similarity: 0.2077
+--------------------------------------------------
+Image: broken_small/015.png
+  Text: 'good' Similarity: 0.2085
+  Text: 'contamination' Similarity: 0.2083
+  Text: 'broken_small' Similarity: 0.2329
+  Text: 'broken_large' Similarity: 0.2275
+--------------------------------------------------
+Image: broken_small/019.png
+  Text: 'good' Similarity: 0.2110
+  Text: 'contamination' Similarity: 0.2044
+  Text: 'broken_small' Similarity: 0.2302
+  Text: 'broken_large' Similarity: 0.2232
+--------------------------------------------------
+Image: broken_small/009.png
+  Text: 'good' Similarity: 0.2124
+  Text: 'contamination' Similarity: 0.2005
+  Text: 'broken_small' Similarity: 0.2206
+  Text: 'broken_large' Similarity: 0.2178
+--------------------------------------------------
+Image: broken_small/000.png
+  Text: 'good' Similarity: 0.2145
+  Text: 'contamination' Similarity: 0.1967
+  Text: 'broken_small' Similarity: 0.2179
+  Text: 'broken_large' Similarity: 0.2122
+--------------------------------------------------
+Image: broken_small/017.png
+  Text: 'good' Similarity: 0.2092
+  Text: 'contamination' Similarity: 0.2010
+  Text: 'broken_small' Similarity: 0.2238
+  Text: 'broken_large' Similarity: 0.2182
+--------------------------------------------------
+Image: broken_small/018.png
+  Text: 'good' Similarity: 0.2152
+  Text: 'contamination' Similarity: 0.2078
+  Text: 'broken_small' Similarity: 0.2344
+  Text: 'broken_large' Similarity: 0.2281
+--------------------------------------------------
+Image: broken_small/011.png
+  Text: 'good' Similarity: 0.2127
+  Text: 'contamination' Similarity: 0.2040
+  Text: 'broken_small' Similarity: 0.2277
+  Text: 'broken_large' Similarity: 0.2226
+--------------------------------------------------
+Image: broken_small/007.png
+  Text: 'good' Similarity: 0.2179
+  Text: 'contamination' Similarity: 0.2135
+  Text: 'broken_small' Similarity: 0.2385
+  Text: 'broken_large' Similarity: 0.2339
+--------------------------------------------------
+Image: broken_small/008.png
+  Text: 'good' Similarity: 0.2090
+  Text: 'contamination' Similarity: 0.2077
+  Text: 'broken_small' Similarity: 0.2313
+  Text: 'broken_large' Similarity: 0.2243
+--------------------------------------------------
+Image: broken_small/013.png
+  Text: 'good' Similarity: 0.2066
+  Text: 'contamination' Similarity: 0.2134
+  Text: 'broken_small' Similarity: 0.2383
+  Text: 'broken_large' Similarity: 0.2307
+--------------------------------------------------
+Image: broken_small/006.png
+  Text: 'good' Similarity: 0.2092
+  Text: 'contamination' Similarity: 0.2016
+  Text: 'broken_small' Similarity: 0.2311
+  Text: 'broken_large' Similarity: 0.2255
+--------------------------------------------------
+Image: broken_small/012.png
+  Text: 'good' Similarity: 0.2112
+  Text: 'contamination' Similarity: 0.2080
+  Text: 'broken_small' Similarity: 0.2317
+  Text: 'broken_large' Similarity: 0.2260
+--------------------------------------------------
+Image: broken_small/004.png
+  Text: 'good' Similarity: 0.2112
+  Text: 'contamination' Similarity: 0.2012
+  Text: 'broken_small' Similarity: 0.2254
+  Text: 'broken_large' Similarity: 0.2161
+--------------------------------------------------
+Image: broken_small/003.png
+  Text: 'good' Similarity: 0.2126
+  Text: 'contamination' Similarity: 0.2158
+  Text: 'broken_small' Similarity: 0.2373
+  Text: 'broken_large' Similarity: 0.2339
+--------------------------------------------------
+Image: broken_small/021.png
+  Text: 'good' Similarity: 0.2131
+  Text: 'contamination' Similarity: 0.2099
+  Text: 'broken_small' Similarity: 0.2314
+  Text: 'broken_large' Similarity: 0.2293
+--------------------------------------------------
+Image: broken_small/002.png
+  Text: 'good' Similarity: 0.2131
+  Text: 'contamination' Similarity: 0.2064
+  Text: 'broken_small' Similarity: 0.2337
+  Text: 'broken_large' Similarity: 0.2249
+--------------------------------------------------
+Image: broken_small/001.png
+  Text: 'good' Similarity: 0.2125
+  Text: 'contamination' Similarity: 0.1970
+  Text: 'broken_small' Similarity: 0.2218
+  Text: 'broken_large' Similarity: 0.2098
+--------------------------------------------------
+Image: broken_large/005.png
+  Text: 'good' Similarity: 0.2113
+  Text: 'contamination' Similarity: 0.2042
+  Text: 'broken_small' Similarity: 0.2374
+  Text: 'broken_large' Similarity: 0.2316
+--------------------------------------------------
+Image: broken_large/010.png
+  Text: 'good' Similarity: 0.2119
+  Text: 'contamination' Similarity: 0.2034
+  Text: 'broken_small' Similarity: 0.2345
+  Text: 'broken_large' Similarity: 0.2258
+--------------------------------------------------
+Image: broken_large/014.png
+  Text: 'good' Similarity: 0.2086
+  Text: 'contamination' Similarity: 0.2174
+  Text: 'broken_small' Similarity: 0.2372
+  Text: 'broken_large' Similarity: 0.2243
+--------------------------------------------------
+Image: broken_large/016.png
+  Text: 'good' Similarity: 0.2099
+  Text: 'contamination' Similarity: 0.2103
+  Text: 'broken_small' Similarity: 0.2465
+  Text: 'broken_large' Similarity: 0.2370
+--------------------------------------------------
+Image: broken_large/015.png
+  Text: 'good' Similarity: 0.2049
+  Text: 'contamination' Similarity: 0.2007
+  Text: 'broken_small' Similarity: 0.2330
+  Text: 'broken_large' Similarity: 0.2249
+--------------------------------------------------
+Image: broken_large/019.png
+  Text: 'good' Similarity: 0.2047
+  Text: 'contamination' Similarity: 0.2073
+  Text: 'broken_small' Similarity: 0.2397
+  Text: 'broken_large' Similarity: 0.2335
+--------------------------------------------------
+Image: broken_large/009.png
+  Text: 'good' Similarity: 0.2060
+  Text: 'contamination' Similarity: 0.2044
+  Text: 'broken_small' Similarity: 0.2246
+  Text: 'broken_large' Similarity: 0.2183
+--------------------------------------------------
+Image: broken_large/000.png
+  Text: 'good' Similarity: 0.2073
+  Text: 'contamination' Similarity: 0.2085
+  Text: 'broken_small' Similarity: 0.2400
+  Text: 'broken_large' Similarity: 0.2350
+--------------------------------------------------
+Image: broken_large/017.png
+  Text: 'good' Similarity: 0.2113
+  Text: 'contamination' Similarity: 0.2087
+  Text: 'broken_small' Similarity: 0.2417
+  Text: 'broken_large' Similarity: 0.2354
+--------------------------------------------------
+Image: broken_large/018.png
+  Text: 'good' Similarity: 0.2035
+  Text: 'contamination' Similarity: 0.2083
+  Text: 'broken_small' Similarity: 0.2415
+  Text: 'broken_large' Similarity: 0.2324
+--------------------------------------------------
+Image: broken_large/011.png
+  Text: 'good' Similarity: 0.2098
+  Text: 'contamination' Similarity: 0.2025
+  Text: 'broken_small' Similarity: 0.2293
+  Text: 'broken_large' Similarity: 0.2202
+--------------------------------------------------
+Image: broken_large/007.png
+  Text: 'good' Similarity: 0.2089
+  Text: 'contamination' Similarity: 0.2132
+  Text: 'broken_small' Similarity: 0.2305
+  Text: 'broken_large' Similarity: 0.2255
+--------------------------------------------------
+Image: broken_large/008.png
+  Text: 'good' Similarity: 0.2117
+  Text: 'contamination' Similarity: 0.2124
+  Text: 'broken_small' Similarity: 0.2315
+  Text: 'broken_large' Similarity: 0.2241
+--------------------------------------------------
+Image: broken_large/013.png
+  Text: 'good' Similarity: 0.2026
+  Text: 'contamination' Similarity: 0.1998
+  Text: 'broken_small' Similarity: 0.2367
+  Text: 'broken_large' Similarity: 0.2282
+--------------------------------------------------
+Image: broken_large/006.png
+  Text: 'good' Similarity: 0.2066
+  Text: 'contamination' Similarity: 0.2108
+  Text: 'broken_small' Similarity: 0.2462
+  Text: 'broken_large' Similarity: 0.2348
+--------------------------------------------------
+Image: broken_large/012.png
+  Text: 'good' Similarity: 0.2070
+  Text: 'contamination' Similarity: 0.1927
+  Text: 'broken_small' Similarity: 0.2195
+  Text: 'broken_large' Similarity: 0.2098
+--------------------------------------------------
+Image: broken_large/004.png
+  Text: 'good' Similarity: 0.2101
+  Text: 'contamination' Similarity: 0.2132
+  Text: 'broken_small' Similarity: 0.2429
+  Text: 'broken_large' Similarity: 0.2361
+--------------------------------------------------
+Image: broken_large/003.png
+  Text: 'good' Similarity: 0.2049
+  Text: 'contamination' Similarity: 0.2065
+  Text: 'broken_small' Similarity: 0.2403
+  Text: 'broken_large' Similarity: 0.2232
+--------------------------------------------------
+Image: broken_large/002.png
+  Text: 'good' Similarity: 0.2112
+  Text: 'contamination' Similarity: 0.2094
+  Text: 'broken_small' Similarity: 0.2427
+  Text: 'broken_large' Similarity: 0.2359
+--------------------------------------------------
+Image: broken_large/001.png
+  Text: 'good' Similarity: 0.2104
+  Text: 'contamination' Similarity: 0.2063
+  Text: 'broken_small' Similarity: 0.2390
+  Text: 'broken_large' Similarity: 0.2353
+--------------------------------------------------

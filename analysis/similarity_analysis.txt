@@ -1,0 +1,9 @@
+Average Similarity per Category:
+  good: 0.2138
+  contamination: 0.2085
+  broken_small: 0.2286
+  broken_large: 0.2286
+
+Statistical Analysis:
+Pearson Correlation: 0.6399, p-value: 7.4086e-11
+Spearman Correlation: 0.6443, p-value: 4.9539e-11

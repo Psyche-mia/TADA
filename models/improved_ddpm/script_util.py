@@ -41,6 +41,26 @@ IMAGENET_DICT = dict(
     use_new_attention_order=False,
 )
 
+MVTEC_DICT = dict(
+    attention_resolutions="32,16,8",
+    class_cond=True,
+    image_size=512,
+    learn_sigma=True,
+    num_channels=256,
+    num_head_channels=64,
+    num_res_blocks=2,
+    resblock_updown=True,
+    use_fp16=False,
+    use_scale_shift_norm=True,
+    dropout=0.0,
+    num_heads=4,
+    num_heads_upsample=-1,
+    channel_mult="",
+    use_checkpoint=False,
+    use_new_attention_order=False,
+)
+
+
 
 def create_model(
     image_size,
@@ -104,6 +124,8 @@ def i_DDPM(dataset_name = 'AFHQ'):
         return create_model(**AFHQ_DICT)
     elif dataset_name == 'IMAGENET':
         return create_model(**IMAGENET_DICT)
+    elif dataset_name == 'MVTec':
+        return create_model(**MVTEC_DICT)
     else:
         print('Not implemented.')
         exit()

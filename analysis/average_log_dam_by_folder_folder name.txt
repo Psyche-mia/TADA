@@ -1,0 +1,4 @@
+good: 0.0120
+contamination: 0.0119
+broken_small: 0.0122
+broken_large: 0.0121

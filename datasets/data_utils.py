@@ -3,6 +3,7 @@ from .CelebA_HQ_dataset import get_celeba_dataset
 from .LSUN_dataset import get_lsun_dataset
 from torch.utils.data import DataLoader
 from .IMAGENET_dataset import get_imagenet_dataset
+from .MVTec_dataset import get_mvtec_dataset
 
 def get_dataset(dataset_type, dataset_paths, config, target_class_num=None, gender=None):
     if dataset_type == 'AFHQ':
@@ -13,6 +14,8 @@ def get_dataset(dataset_type, dataset_paths, config, target_class_num=None, gend
         train_dataset, test_dataset = get_celeba_dataset(dataset_paths['CelebA_HQ'], config)
     elif dataset_type == "IMAGENET":
         train_dataset, test_dataset = get_imagenet_dataset(dataset_paths['IMAGENET'], config, class_num=target_class_num)
+    elif dataset_type == "MVTec":
+        train_dataset, test_dataset = get_mvtec_dataset(dataset_paths['MVTec'], config, split_ratio=0.8)
     else:
         raise ValueError
 

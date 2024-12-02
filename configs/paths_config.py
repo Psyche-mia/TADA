@@ -4,6 +4,7 @@ DATASET_PATHS = {
 	'AFHQ': 'data/afhq',
 	'LSUN':  'data/lsun',
     'IMAGENET': 'data/imagenet/',
+    'MVTec': '/mnt/IAD_datasets/Defect_Spectrum/DS-MVTec/',
 }
 
 MODEL_PATHS = {
@@ -11,6 +12,7 @@ MODEL_PATHS = {
 	'FFHQ': "pretrained/ffhq_10m.pt",
 	'ir_se50': 'pretrained/model_ir_se50.pth',
     'IMAGENET': "pretrained/512x512_diffusion.pt",
+    'MVTec': "pretrained/512x512_diffusion.pt",
 	'shape_predictor': "pretrained/shape_predictor_68_face_landmarks.dat.bz2",
 }
 

@@ -1,6 +1,7 @@
 data:
-    dataset: "IMAGENET"
-    category: "IMAGENET"
+    dataset: "MVTec"
+    category: "bottle"
+    target_folder: "broken_large"
     image_size: 256
     channels: 3
     logit_transform: false
