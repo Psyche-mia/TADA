@@ -12,7 +12,7 @@ import torchvision.utils as tvu
 from models.ddpm.diffusion import DDPM
 from models.improved_ddpm.script_util import i_DDPM
 from utils.text_dic import SRC_TRG_TXT_DIC
-from utils.diffusion_utils import get_beta_schedule, denoising_step, stable_diffusion_denoising_step
+from utils.diffusion_utils import get_beta_schedule, denoising_step
 from losses import id_loss
 from losses.anomalyclip_loss import AnomalyCLIPLoss
 from losses.clip_loss import CLIPLoss, TargetLatentLoss
@@ -20,9 +20,6 @@ from datasets.data_utils import get_dataset, get_dataloader
 from configs.paths_config import DATASET_PATHS, MODEL_PATHS, HYBRID_MODEL_PATHS, HYBRID_CONFIG, ANOMALY_MODEL_PATHS
 from datasets.imagenet_dic import IMAGENET_DIC
 from utils.align_utils import run_alignment
-from diffusers import StableDiffusionImageVariationPipeline
-from torchvision import transforms
-from torchvision.transforms import ToPILImage
 
 class DiffusionCLIP(object):
     def __init__(self, args, config, device=None):
@@ -62,19 +59,253 @@ class DiffusionCLIP(object):
             self.src_txts = SRC_TRG_TXT_DIC[self.args.edit_attr][0]
             self.trg_txts = SRC_TRG_TXT_DIC[self.args.edit_attr][1]
 
+    def clip_finetune(self):
+        print(self.args.exp)
+        print(f'   {self.src_txts}')
+        print(f'-> {self.trg_txts}')
+
+        # ----------- Model -----------#
+        if self.config.data.dataset == "LSUN":
+            if self.config.data.category == "bedroom":
+                url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/bedroom.ckpt"
+            elif self.config.data.category == "church_outdoor":
+                url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/church_outdoor.ckpt"
+        elif self.config.data.dataset == "CelebA_HQ":
+            url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
+        elif self.config.data.dataset == "AFHQ":
+            pass
+        else:
+            raise ValueError
+
+        if self.config.data.dataset in ["CelebA_HQ", "LSUN"]:
+            model = DDPM(self.config)
+            if self.args.model_path:
+                init_ckpt = torch.load(self.args.model_path)
+            else:
+                init_ckpt = torch.hub.load_state_dict_from_url(url, map_location=self.device)
+            learn_sigma = False
+            print("Original diffusion Model loaded.")
+        elif self.config.data.dataset in ["FFHQ", "AFHQ"]:
+            model = i_DDPM(self.config.data.dataset)
+            if self.args.model_path:
+                init_ckpt = torch.load(self.args.model_path)
+            else:
+                init_ckpt = torch.load(MODEL_PATHS[self.config.data.dataset])
+            learn_sigma = True
+            print("Improved diffusion Model loaded.")
+        else:
+            print('Not implemented dataset')
+            raise ValueError
+        model.load_state_dict(init_ckpt)
+        model.to(self.device)
+        model = torch.nn.DataParallel(model)
+
+        # ----------- Optimizer and Scheduler -----------#
+        print(f"Setting optimizer with lr={self.args.lr_clip_finetune}")
+        optim_ft = torch.optim.Adam(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)
+        init_opt_ckpt = optim_ft.state_dict()
+        scheduler_ft = torch.optim.lr_scheduler.StepLR(optim_ft, step_size=1, gamma=self.args.sch_gamma)
+        init_sch_ckpt = scheduler_ft.state_dict()
+
+        # ----------- Loss -----------#
+        print("Loading losses")
+        clip_loss_func = CLIPLoss(
+            self.device,
+            lambda_direction=1,
+            lambda_patch=0,
+            lambda_global=0,
+            lambda_manifold=0,
+            lambda_texture=0,
+            clip_model=self.args.clip_model_name)
+        id_loss_func = id_loss.IDLoss().to(self.device).eval()
+
+        # ----------- Precompute Latents -----------#
+        print("Prepare identity latent")
+        seq_inv = np.linspace(0, 1, self.args.n_inv_step) * self.args.t_0
+        seq_inv = [int(s) for s in list(seq_inv)]
+        seq_inv_next = [-1] + list(seq_inv[:-1])
+
+        n = self.args.bs_train
+        img_lat_pairs_dic = {}
+        for mode in ['train', 'test']:
+            img_lat_pairs = []
+            pairs_path = os.path.join('precomputed/',
+                                      f'{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
+            print(pairs_path)
+            if os.path.exists(pairs_path):
+                print(f'{mode} pairs exists')
+                img_lat_pairs_dic[mode] = torch.load(pairs_path)
+                for step, (x0, x_id, x_lat) in enumerate(img_lat_pairs_dic[mode]):
+                    tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
+                    tvu.save_image((x_id + 1) * 0.5, os.path.join(self.args.image_folder,
+                                                                  f'{mode}_{step}_1_rec_ninv{self.args.n_inv_step}.png'))
+                    if step == self.args.n_precomp_img - 1:
+                        break
+                continue
+            else:
+                train_dataset, test_dataset = get_dataset(self.config.data.dataset, DATASET_PATHS, self.config)
+                loader_dic = get_dataloader(train_dataset, test_dataset, bs_train=self.args.bs_train,
+                                            num_workers=self.config.data.num_workers)
+                loader = loader_dic[mode]
+
+            for step, img in enumerate(loader):
+                x0 = img.to(self.config.device)
+                tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
+
+                x = x0.clone()
+                model.eval()
+                with torch.no_grad():
+                    with tqdm(total=len(seq_inv), desc=f"Inversion process {mode} {step}") as progress_bar:
+                        for it, (i, j) in enumerate(zip((seq_inv_next[1:]), (seq_inv[1:]))):
+                            t = (torch.ones(n) * i).to(self.device)
+                            t_prev = (torch.ones(n) * j).to(self.device)
+
+                            x = denoising_step(x, t=t, t_next=t_prev, models=model,
+                                               logvars=self.logvar,
+                                               sampling_type='ddim',
+                                               b=self.betas,
+                                               eta=0,
+                                               learn_sigma=learn_sigma)
+
+                            progress_bar.update(1)
+                    x_lat = x.clone()
+                    tvu.save_image((x_lat + 1) * 0.5, os.path.join(self.args.image_folder,
+                                                                   f'{mode}_{step}_1_lat_ninv{self.args.n_inv_step}.png'))
+
+                    with tqdm(total=len(seq_inv), desc=f"Generative process {mode} {step}") as progress_bar:
+                        for it, (i, j) in enumerate(zip(reversed((seq_inv)), reversed((seq_inv_next)))):
+                            t = (torch.ones(n) * i).to(self.device)
+                            t_next = (torch.ones(n) * j).to(self.device)
+
+                            x = denoising_step(x, t=t, t_next=t_next, models=model,
+                                               logvars=self.logvar,
+                                               sampling_type=self.args.sample_type,
+                                               b=self.betas,
+                                               learn_sigma=learn_sigma)
+                            progress_bar.update(1)
+
+                    img_lat_pairs.append([x0, x.detach().clone(), x_lat.detach().clone()])
+                tvu.save_image((x + 1) * 0.5, os.path.join(self.args.image_folder,
+                                                           f'{mode}_{step}_1_rec_ninv{self.args.n_inv_step}.png'))
+                if step == self.args.n_precomp_img - 1:
+                    break
+
+            img_lat_pairs_dic[mode] = img_lat_pairs
+            pairs_path = os.path.join('precomputed/',
+                                      f'{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
+            torch.save(img_lat_pairs, pairs_path)
+
+        # ----------- Finetune Diffusion Models -----------#
+        print("Start finetuning")
+        print(f"Sampling type: {self.args.sample_type.upper()} with eta {self.args.eta}")
+        if self.args.n_train_step != 0:
+            seq_train = np.linspace(0, 1, self.args.n_train_step) * self.args.t_0
+            seq_train = [int(s) for s in list(seq_train)]
+            print('Uniform skip type')
+        else:
+            seq_train = list(range(self.args.t_0))
+            print('No skip')
+        seq_train_next = [-1] + list(seq_train[:-1])
+
+        seq_test = np.linspace(0, 1, self.args.n_test_step) * self.args.t_0
+        seq_test = [int(s) for s in list(seq_test)]
+        seq_test_next = [-1] + list(seq_test[:-1])
+
+        for src_txt, trg_txt in zip(self.src_txts, self.trg_txts):
+            print(f"CHANGE {src_txt} TO {trg_txt}")
+            model.module.load_state_dict(init_ckpt)
+            optim_ft.load_state_dict(init_opt_ckpt)
+            scheduler_ft.load_state_dict(init_sch_ckpt)
+            clip_loss_func.target_direction = None
+
+            # ----------- Train -----------#
+            for it_out in range(self.args.n_iter):
+                exp_id = os.path.split(self.args.exp)[-1]
+                save_name = f'checkpoint/{exp_id}_{trg_txt.replace(" ", "_")}-{it_out}.pth'
+                if self.args.do_train:
+                    if os.path.exists(save_name):
+                        print(f'{save_name} already exists.')
+                        model.module.load_state_dict(torch.load(save_name))
+                        continue
+                    else:
+                        for step, (x0, x_id, x_lat) in enumerate(img_lat_pairs_dic['train']):
+                            model.train()
+                            time_in_start = time.time()
+
+                            optim_ft.zero_grad()
+                            x = x_lat.clone()
+
+                            with tqdm(total=len(seq_train), desc=f"CLIP iteration") as progress_bar:
+                                for t_it, (i, j) in enumerate(zip(reversed(seq_train), reversed(seq_train_next))):
+                                    t = (torch.ones(n) * i).to(self.device)
+                                    t_next = (torch.ones(n) * j).to(self.device)
+
+                                    x = denoising_step(x, t=t, t_next=t_next, models=model,
+                                                       logvars=self.logvar,
+                                                       sampling_type=self.args.sample_type,
+                                                       b=self.betas,
+                                                       eta=self.args.eta,
+                                                       learn_sigma=learn_sigma)
+
+                                    progress_bar.update(1)
+
+                            loss_clip = (2 - clip_loss_func(x0, src_txt, x, trg_txt)) / 2
+                            loss_clip = -torch.log(loss_clip)
+                            loss_id = torch.mean(id_loss_func(x0, x))
+                            loss_l1 = nn.L1Loss()(x0, x)
+                            loss = self.args.clip_loss_w * loss_clip + self.args.id_loss_w * loss_id + self.args.l1_loss_w * loss_l1
+                            loss.backward()
+
+                            optim_ft.step()
+                            print(f"CLIP {step}-{it_out}: loss_id: {loss_id:.3f}, loss_clip: {loss_clip:.3f}")
+
+                            if self.args.save_train_image:
+                                tvu.save_image((x + 1) * 0.5, os.path.join(self.args.image_folder,
+                                                                           f'train_{step}_2_clip_{trg_txt.replace(" ", "_")}_{it_out}_ngen{self.args.n_train_step}.png'))
+                            time_in_end = time.time()
+                            print(f"Training for 1 image takes {time_in_end - time_in_start:.4f}s")
+                            if step == self.args.n_train_img - 1:
+                                break
+
+                        if isinstance(model, nn.DataParallel):
+                            torch.save(model.module.state_dict(), save_name)
+                        else:
+                            torch.save(model.state_dict(), save_name)
+                        print(f'Model {save_name} is saved.')
+                        scheduler_ft.step()
+
+                # ----------- Eval -----------#
+                if self.args.do_test:
+                    if not self.args.do_train:
+                        print(save_name)
+                        model.module.load_state_dict(torch.load(save_name))
+
+                    model.eval()
+                    img_lat_pairs = img_lat_pairs_dic[mode]
+                    for step, (x0, x_id, x_lat) in enumerate(img_lat_pairs):
+                        with torch.no_grad():
+                            x = x_lat
+                            with tqdm(total=len(seq_test), desc=f"Eval iteration") as progress_bar:
+                                for i, j in zip(reversed(seq_test), reversed(seq_test_next)):
+                                    t = (torch.ones(n) * i).to(self.device)
+                                    t_next = (torch.ones(n) * j).to(self.device)
+
+                                    x = denoising_step(x, t=t, t_next=t_next, models=model,
+                                                       logvars=self.logvar,
+                                                       sampling_type=self.args.sample_type,
+                                                       b=self.betas,
+                                                       eta=self.args.eta,
+                                                       learn_sigma=learn_sigma)
+
+                                    progress_bar.update(1)
+
+                            print(f"Eval {step}-{it_out}")
+                            tvu.save_image((x + 1) * 0.5, os.path.join(self.args.image_folder,
+                                                                       f'{mode}_{step}_2_clip_{trg_txt.replace(" ", "_")}_{it_out}_ngen{self.args.n_test_step}.png'))
+                            if step == self.args.n_test_img - 1:
+                                break
 
     def clip_finetune_eff(self):
-        # define tform
-        tform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize(
-                (224, 224),
-                interpolation=transforms.InterpolationMode.BICUBIC,
-                antialias=False,
-                ),
-            transforms.Normalize(
-            [0.48145466, 0.4578275, 0.40821073],
-            [0.26862954, 0.26130258, 0.27577711]),])
         # print(f"Dataset: {self.config.data.dataset}")
         # print(f"Category: {self.config.data.category}")
         print(self.args.exp)
@@ -96,11 +327,7 @@ class DiffusionCLIP(object):
             # print("error here 1")
             raise ValueError
 
-        if self.config.model.type == "stable_diffusion":
-            local_model_path = "pretrained/sd-image-variations-diffusers"
-            model = StableDiffusionImageVariationPipeline.from_pretrained(local_model_path, revision="v2.0")
-            print("Stable Diffusion Model loaded.")   
-        elif self.config.data.dataset in ["CelebA_HQ", "LSUN"]:
+        if self.config.data.dataset in ["CelebA_HQ", "LSUN"]:
             model = DDPM(self.config)
             if self.args.model_path:
                 init_ckpt = torch.load(self.args.model_path)
@@ -120,34 +347,13 @@ class DiffusionCLIP(object):
             print('Not implemented dataset')
             raise ValueError
         # print(f"Load checkpoint from {url}")
-        if self.config.model.type == "stable_diffusion":
-            model.to(self.device)
-            # Move scheduler tensors to the GPU
-            for attr in dir(model.scheduler):
-                tensor = getattr(model.scheduler, attr, None)
-                if isinstance(tensor, torch.Tensor):
-                    setattr(model.scheduler, attr, tensor.to(self.device))
-            # model = torch.nn.DataParallel(model)
-            
-            # Check the total number of parameters in the model
-            # total_params = sum(p.numel() for p in model.parameters())
-            # print(f"Total parameters in the model: {total_params}")
-
-            # # Check if any of the submodules have parameters
-            # print("UNet parameters:", sum(p.numel() for p in model.module.unet.parameters()))
-            # print("VAE parameters:", sum(p.numel() for p in model.module.vae.parameters()))
-            # print("Text Encoder parameters:", sum(p.numel() for p in model.module.text_encoder.parameters()))
-        else:
-            model.load_state_dict(init_ckpt)
-            model.to(self.device)
-            model = torch.nn.DataParallel(model)
+        model.load_state_dict(init_ckpt)
+        model.to(self.device)
+        model = torch.nn.DataParallel(model)
 
         # ----------- Optimizer and Scheduler -----------#
         print(f"Setting optimizer with lr={self.args.lr_clip_finetune}")
-        if self.config.model.type == "stable_diffusion":
-            optim_ft = torch.optim.Adam(model.unet.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)
-        else:
-            optim_ft = torch.optim.Adam(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)
+        optim_ft = torch.optim.Adam(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)
         # optim_ft = torch.optim.SGD(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)#, momentum=0.9)
         init_opt_ckpt = optim_ft.state_dict()
         scheduler_ft = torch.optim.lr_scheduler.StepLR(optim_ft, step_size=1, gamma=self.args.sch_gamma)
@@ -164,11 +370,7 @@ class DiffusionCLIP(object):
 
         for mode in ['train', 'test']:
             img_lat_pairs = []
-            if self.config.model.type == "stable_diffusion":
-                pairs_path = os.path.join('precomputed/',
-                                          f'sd_{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
-                print("pairs path for stable diffusion")   
-            elif self.args.edit_attr in ['female', 'male']:
+            if self.args.edit_attr in ['female', 'male']:
                 self.config.data.dataset = 'GENDER'
                 self.config.data.category = 'GENDER'
                 if self.args.edit_attr == 'female':
@@ -184,7 +386,8 @@ class DiffusionCLIP(object):
                                               f'{self.config.data.category}_{IMAGENET_DIC[str(self.args.target_class_num)][1]}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
                 else:
                     pairs_path = os.path.join('precomputed/',
-                                              f'{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')         
+                                              f'{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
+
             else:
                 pairs_path = os.path.join('precomputed/',
                                           f'{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
@@ -215,63 +418,20 @@ class DiffusionCLIP(object):
                                             num_workers=self.config.data.num_workers)
                 loader = loader_dic[mode]
 
-            # Unconditional text embeddings
-            # uncond_embeddings = model.text_encoder(model.tokenizer([""], return_tensors="pt").input_ids.to(self.device))[0]
             for step, img in enumerate(loader):
-                if self.config.model.type == "stable_diffusion":
-                    to_pil = ToPILImage()
-                    print("image shape: ", img.shape)
-                    # convert rgba to rgb and convert tensor to PIL then process the transform and convert back to tensor
-                    x0 = tform(to_pil(img.squeeze(0)[:3, :, :])).to(self.config.device).unsqueeze(0)
-                    # Save the image in 'result/' directory
-                    # pil_img = to_pil(img.squeeze(0)[:3, :, :])
-                    # save_path = "data/converted_image.png"
-                    # pil_img.save(save_path)
-                else:
-                    x0 = img.to(self.config.device)
+                x0 = img.to(self.config.device)
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
 
                 x = x0.clone()
-                # Stable diffusion model to evaluation mode
-                model.unet.eval()
-                model.vae.eval()
-                model.scheduler.set_timesteps(num_inference_steps=self.args.n_inv_step)
+                model.eval()
                 time_s = time.time()
                 with torch.no_grad():
                     with tqdm(total=len(seq_inv), desc=f"Inversion process {mode} {step}") as progress_bar:
                         for it, (i, j) in enumerate(zip((seq_inv_next[1:]), (seq_inv[1:]))):
                             t = (torch.ones(n) * i).to(self.device)
-                            # print(type(t))
                             t_prev = (torch.ones(n) * j).to(self.device)
-                            
-                            # add stabel diffusion method
-                            if self.config.model.type == "stable_diffusion":
-                                # Check if the current input is an image or latent
-                                x = stable_diffusion_denoising_step(model, x, t.long(), device=self.device, is_latent=(it > 0))
-                                # Encode the image into latent space using the VAE
-                                # x = model.vae.encode(x).latent_dist.sample()
-                                # print("x shape before scaling: ", x.shape)
-                                # # print(type(t))
-                                # x = x * model.vae.config.scaling_factor  # Scale latent
-                                # print("x shape after scaling: ", x.shape)
-                                # # Denoising step
-                                # # Example latent tensor x (e.g., after passing through the VAE)
-                                # batch_size, _, height, width = x.shape
-                                # seq_length = height * width  # Latent tokens, e.g., 784
 
-                                # # Create dummy embeddings with the correct shape
-                                # dummy_embeddings = torch.zeros((batch_size, seq_length, 768), device=x.device)  # Use 768, not 320
-
-                                # # Print the shape to verify
-                                # print(f"Dummy embeddings shape: {dummy_embeddings.shape}")
-                                # # Pass to UNet
-                                # noise_pred = model.unet(x, t, encoder_hidden_states=dummy_embeddings)["sample"]
-                                # # t = t.long()  # Cast to long
-                                # print(type(t))
-                                # # print("noise prediction", noise_pred)
-                                # x = model.scheduler.step(noise_pred, t, x)["prev_sample"]
-                            else:
-                                x = denoising_step(x, t=t, t_next=t_prev, models=model,
+                            x = denoising_step(x, t=t, t_next=t_prev, models=model,
                                                logvars=self.logvar,
                                                sampling_type='ddim',
                                                b=self.betas,
@@ -281,31 +441,20 @@ class DiffusionCLIP(object):
                             progress_bar.update(1)
                     time_e = time.time()
                     print(f'{time_e - time_s} seconds')
-                    print("latent x:", x)
                     x_lat = x.clone()
                     tvu.save_image((x_lat + 1) * 0.5, os.path.join(self.args.image_folder,
                                                                    f'{mode}_{step}_1_lat_ninv{self.args.n_inv_step}.png'))
 
                     with tqdm(total=len(seq_inv), desc=f"Generative process {mode} {step}") as progress_bar:
                         time_s = time.time()
-                        # seq_inv and seq_inv_next are reversed
                         for it, (i, j) in enumerate(zip(reversed((seq_inv)), reversed((seq_inv_next)))):
                             t = (torch.ones(n) * i).to(self.device)
                             t_next = (torch.ones(n) * j).to(self.device)
-                            
-                            # add stabel diffusion method
-                            if self.config.model.type == "stable_diffusion":
-                                # Denoising step
-                                # If it's the last step, mark as final step
-                                is_final_step = (it == len(seq_inv) - 1)
-                                
-                                x = stable_diffusion_denoising_step(model, x, t.long(), self.device, is_latent=True, is_final_step=is_final_step)
-                            else:
-                                x = denoising_step(x, t=t, t_next=t_prev, models=model,
+
+                            x = denoising_step(x, t=t, t_next=t_next, models=model,
                                                logvars=self.logvar,
-                                               sampling_type='ddim',
+                                               sampling_type=self.args.sample_type,
                                                b=self.betas,
-                                               eta=0,
                                                learn_sigma=learn_sigma)
                             progress_bar.update(1)
                         time_e = time.time()
@@ -318,6 +467,8 @@ class DiffusionCLIP(object):
                     break
 
             img_lat_pairs_dic[mode] = img_lat_pairs
+            # pairs_path = os.path.join('precomputed/',
+            #                           f'{self.config.data.category}_{mode}_t{self.args.t_0}_nim{self.args.n_precomp_img}_ninv{self.args.n_inv_step}_pairs.pth')
             torch.save(img_lat_pairs, pairs_path)
             
         # ----------- Loss -----------#
@@ -359,10 +510,7 @@ class DiffusionCLIP(object):
 
         for src_txt, trg_txt in zip(self.src_txts, self.trg_txts):
             print(f"CHANGE {src_txt} TO {trg_txt}")
-            if self.config.model.type == "stable_diffusion":
-                pass
-            else:
-                model.module.load_state_dict(init_ckpt)
+            model.module.load_state_dict(init_ckpt)
             optim_ft.load_state_dict(init_opt_ckpt)
             scheduler_ft.load_state_dict(init_sch_ckpt)
             clip_loss_func.target_direction = None
@@ -378,10 +526,7 @@ class DiffusionCLIP(object):
                         continue
                     else:
                         for step, (x0, _, x_lat) in enumerate(img_lat_pairs_dic['train']):
-                            if self.config.model.type == "stable_diffusion":
-                                model.unet.train()
-                            else:
-                                model.train()
+                            model.train()
                             time_in_start = time.time()
 
                             optim_ft.zero_grad()
@@ -391,21 +536,15 @@ class DiffusionCLIP(object):
                                 for t_it, (i, j) in enumerate(zip(reversed(seq_train), reversed(seq_train_next))):
                                     t = (torch.ones(n) * i).to(self.device)
                                     t_next = (torch.ones(n) * j).to(self.device)
-                                    if self.config.model.type == "stable_diffusion":
-                                        # Denoising step
-                                        # If it's the last step, mark as final step
-                                        is_final_step = (t_it == len(seq_inv) - 1)
-                                        print("training latent", x)
-                                        
-                                        x = stable_diffusion_denoising_step(model, x, t.long(), self.device, is_latent=True, is_final_step=is_final_step)
-                                    else:
-                                        x, x0_t = denoising_step(x, t=t, t_next=t_next, models=model,
-                                                                logvars=self.logvar,
-                                                                sampling_type=self.args.sample_type,
-                                                                b=self.betas,
-                                                                eta=self.args.eta,
-                                                                learn_sigma=learn_sigma,
-                                                                out_x0_t=True)
+
+                                    x, x0_t = denoising_step(x, t=t, t_next=t_next, models=model,
+                                                             logvars=self.logvar,
+                                                             sampling_type=self.args.sample_type,
+                                                             b=self.betas,
+                                                             eta=self.args.eta,
+                                                             learn_sigma=learn_sigma,
+                                                             out_x0_t=True)
+
                                     progress_bar.update(1)
                                     x = x.detach().clone()
 
@@ -434,12 +573,8 @@ class DiffusionCLIP(object):
 
 
                                     optim_ft.step()
-                                    if self.config.model.type == "stable_diffusion":
-                                        for p in model.parameters():
-                                            p.grad = None
-                                    else:
-                                        for p in model.module.parameters():
-                                            p.grad = None
+                                    for p in model.module.parameters():
+                                        p.grad = None
                                     print(f"CLIP {step}-{it_out}: loss_clip: {loss_clip:.3f}")
                                     # break
 

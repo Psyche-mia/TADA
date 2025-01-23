@@ -16,6 +16,7 @@ def get_dataset(dataset_type, dataset_paths, config, target_class_num=None, gend
         train_dataset, test_dataset = get_imagenet_dataset(dataset_paths['IMAGENET'], config, class_num=target_class_num)
     elif dataset_type == "MVTec":
         train_dataset, test_dataset = get_mvtec_dataset(dataset_paths['MVTec'], config, split_ratio=0.8)
+        return train_dataset, test_dataset
     else:
         raise ValueError
 
@@ -41,6 +42,15 @@ def get_dataloader(train_dataset, test_dataset, bs_train=1, num_workers=0):
         num_workers=num_workers,
         pin_memory=True,
     )
+    # target_loader = DataLoader(
+    #     target_dataset,
+    #     batch_size=bs_train,
+    #     drop_last=True,
+    #     shuffle=True,
+    #     sampler=None,
+    #     num_workers=num_workers,
+    #     pin_memory=True,
+    # )
 
     return {'train': train_loader, 'test': test_loader}
 

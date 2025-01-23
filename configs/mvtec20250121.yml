@@ -2,7 +2,7 @@ data:
     dataset: "MVTec"
     category: "bottle"
     target_folder: "broken_large"
-    use_mask: false
+    use_mask: true
     use_target: false
     image_size: 256
     channels: 4
@@ -14,7 +14,7 @@ data:
     num_workers: 0
 
 model:
-    type: "stable_diffusion"
+    type: "simple"
     in_channels: 4
     out_ch: 4
     ch: 128

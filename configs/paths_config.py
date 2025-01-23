@@ -4,7 +4,7 @@ DATASET_PATHS = {
 	'AFHQ': 'data/afhq',
 	'LSUN':  'data/lsun',
     'IMAGENET': 'data/imagenet/',
-    'MVTec': '/mnt/IAD_datasets/Defect_Spectrum/DS-MVTec/',
+    'MVTec': '/root/IAD_datasets/Defect_Spectrum/DS-MVTec/',
 }
 
 MODEL_PATHS = {
@@ -25,3 +25,5 @@ HYBRID_MODEL_PATHS = [
 HYBRID_CONFIG = \
 	{ 300: [0.4, 0.6, 0],
 	    0: [0.15, 0.15, 0.7]}
+ 
+ANOMALY_MODEL_PATHS = ['pretrained/epoch_15.pth']

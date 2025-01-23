@@ -5,127 +5,179 @@ from torch.utils.data import Dataset
 import math
 import numpy as np
 import random
-from .imagenet_dic import IMAGENET_DIC
 
-from PIL import Image
-from glob import glob
-import os
-from torch.utils.data import Dataset
-import math
-import numpy as np
-import random
+def get_all_good_data_paths(image_root, category_name=None):
+    """获取所有 'good' 类别的图片路径"""
+    if category_name is not None:
+        data_dir = os.path.join(image_root, category_name, 'image', 'good', '*.png')
+    else:
+        data_dir = os.path.join(image_root, '*', 'image', 'good', '*.png')
+    return sorted(glob(data_dir))
 
-def get_mvtec_dataset(data_root, config, class_num=None, random_crop=False, random_flip=False, split_ratio=0.8):
+
+def get_all_mask_paths(image_root, category_name=None, mask_folder='mask'):
+    """获取所有 mask 的路径"""
+    if category_name is not None:
+        data_dir = os.path.join(image_root, category_name, mask_folder, '*', '*.png')
+    else:
+        data_dir = os.path.join(image_root, '*', mask_folder, '*', '*.png')
+    return sorted(glob(data_dir))
+
+def get_target_mask_paths(image_root, category_name, target_folder):
+    """获取目标文件夹对应的 mask 文件路径"""
+    data_dir = os.path.join(image_root, category_name, 'mask', target_folder, '*.png')
+    print(f"Searching for masks in: {data_dir}")
+    return sorted(glob(data_dir))
+
+def get_target_image_paths(image_root, category_name=None, target_folder=None, num_images=None):
+    """
+    根据 target_folder 获取目标文件夹中的随机 n 个图像路径
+    """
+    data_dir = os.path.join(image_root, category_name, 'image', target_folder, '*.png')
+    print(f"Searching in: {data_dir}")
+    
+    image_paths = sorted(glob(data_dir))
+    if num_images is None or num_images >= len(image_paths):
+        return image_paths
+    return random.sample(image_paths, num_images)
+
+
+def split_data(data_list, split_ratio):
+    """按比例划分数据"""
+    split_index = int(len(data_list) * split_ratio)
+    return data_list[:split_index], data_list[split_index:]
+
+
+def get_mvtec_dataset(data_root, config, random_crop=False, random_flip=False, split_ratio=0.8):
     """
     获取训练、测试和（可选）目标数据集。
 
     参数:
         data_root (str): 数据集根目录。
-        config: 配置对象，包含类别和图像尺寸等信息。
-        class_num: 类别编号（可选）。
+        config: 配置对象，包含类别、图像尺寸、mask 和 target 参数等。
         random_crop (bool): 是否随机裁剪。
         random_flip (bool): 是否随机翻转。
         split_ratio (float): 训练集和测试集划分比例。
-        target_folder (str): 目标文件夹路径（可选）。
 
     返回:
-        tuple: 包含训练集和测试集（始终返回），以及目标数据集（如果提供）。
+        tuple: 包含训练集、测试集，以及（如果 config.data.use_target=True）目标数据集。
     """
     category_name = config.data.category
-    all_data_paths = MVTec_dataset.get_all_data_paths(data_root, category_name=category_name)
-    random.shuffle(all_data_paths)
-    split_index = int(len(all_data_paths) * split_ratio)
-    
-    train_paths = all_data_paths[:split_index]
-    test_paths = all_data_paths[split_index:]
-    
-    # 创建训练集和测试集
-    train_dataset = MVTec_dataset(train_paths, mode='train', img_size=config.data.image_size,
-                                  random_crop=random_crop, random_flip=random_flip)
-    test_dataset = MVTec_dataset(test_paths, mode='test', img_size=config.data.image_size,
-                                 random_crop=random_crop, random_flip=random_flip)
-
-    # 如果提供目标文件夹路径，则创建目标数据集
     target_folder = config.data.target_folder
-    if target_folder:
-        target_image_paths = MVTec_dataset.get_target_image_paths(data_root, category_name=category_name, target_folder=target_folder)
-        target_dataset = MVTec_dataset(target_image_paths, mode='target', img_size=config.data.image_size,
-                                       random_crop=random_crop, random_flip=random_flip)
-        return train_dataset, test_dataset, target_dataset
+
+    # 获取 "good" 图像路径
+    good_image_paths = get_all_good_data_paths(data_root, category_name=category_name)
+    train_image_paths = [good_image_paths[0]] if config.data.use_mask and good_image_paths else good_image_paths
+
+    # 获取 target_folder 对应的 mask 路径并划分
+    if config.data.use_mask:
+        mask_paths = get_target_mask_paths(data_root, category_name, target_folder)
+        train_mask_paths, test_mask_paths = split_data(mask_paths, split_ratio)
     else:
-        return train_dataset, test_dataset
+        train_mask_paths, test_mask_paths = None, None
 
+    # 构建训练和测试数据集
+    train_dataset = MVTec_dataset(
+        train_image_paths, train_mask_paths,
+        data_root, category_name, mode='train',
+        img_size=config.data.image_size, random_crop=random_crop,
+        random_flip=random_flip, use_mask=config.data.use_mask
+    )
+    test_dataset = MVTec_dataset(
+        train_image_paths if config.data.use_mask else good_image_paths, test_mask_paths,
+        data_root, category_name, mode='test',
+        img_size=config.data.image_size, random_crop=random_crop,
+        random_flip=random_flip, use_mask=config.data.use_mask
+    )
 
-###################################################################
+    if config.data.use_target:
+        target_image_paths = get_target_image_paths(data_root, category_name=category_name, target_folder=target_folder, num_images=5)
+        target_dataset = MVTec_dataset(
+            target_image_paths, None, data_root, category_name, target_folder=target_folder,
+            mode='target', img_size=config.data.image_size, random_crop=random_crop,
+            random_flip=random_flip, use_mask=False
+        )
+        return train_dataset, test_dataset, target_dataset
+
+    return train_dataset, test_dataset
+
 
 class MVTec_dataset(Dataset):
-    def __init__(self, image_paths, mode='train', img_size=512, random_crop=True, random_flip=False):
+    def __init__(self, image_paths, mask_paths, image_root, category_name, mode='train', img_size=512,
+                 random_crop=True, random_flip=False, target_folder=None, use_mask=True):
+        """
+        初始化 MVTec 数据集。
+
+        参数:
+            image_paths (list): 图像路径列表。
+            mask_paths (list): Mask 路径列表。
+            image_root (str): 数据集根目录。
+            category_name (str): 类别名称。
+            mode (str): 数据集模式 ('train', 'test', 'target')。
+            img_size (int): 输出图像尺寸。
+            random_crop (bool): 是否随机裁剪。
+            random_flip (bool): 是否随机翻转。
+            target_folder (str): 目标文件夹名称。
+            use_mask (bool): 是否加载和处理 mask。
+        """
         super().__init__()
         self.image_paths = image_paths
+        self.mask_paths = mask_paths
+        self.image_root = image_root
+        self.category_name = category_name
         self.img_size = img_size
         self.random_crop = random_crop
         self.random_flip = random_flip
-        self.target_folder = target_folder  # New argument for target folder
-
-        # if mode == 'target':
-        #     self.image_paths = self._get_target_image_paths(target_folder)
-        # else:
-        #     self.target_image_paths = None
-
-    @staticmethod
-    def get_all_data_paths(image_root, category_name=None):
-        """获取所有的图片路径"""
-        if category_name is not None:
-            data_dir = os.path.join(image_root, category_name, 'image', 'good', '*.png')
-        else:
-            data_dir = os.path.join(image_root, '*', 'image', 'good', '*.png')
-        return sorted(glob(data_dir))
-
-    def get_target_image_paths(self, category_name=None, target_folder=None):
-        """根据target_folder获取目标文件夹中的图像路径"""
-        data_dir = os.path.join(image_root, category_name, 'image', target_folder, '*.png')
-        return sorted(glob(target_folder))  # Assuming target_folder is a complete path with wildcards
+        self.target_folder = target_folder
+        self.use_mask = use_mask
 
     def __getitem__(self, index):
-        # 读取原始训练数据
-        f = self.image_paths[index]
-        pil_image = Image.open(f)
-        pil_image.load()
-        pil_image = pil_image.convert("RGB")
+        # 加载图像
+        image_path = self.image_paths[index % len(self.image_paths)]
+        pil_image = Image.open(image_path).convert("RGB")
 
+        # 加载 mask
+        if self.use_mask and self.mask_paths:
+            mask_path = self.mask_paths[index]
+            pil_mask = Image.open(mask_path).convert("L")
+        else:
+            pil_mask = None
+
+        # 随机裁剪或中心裁剪
         if self.random_crop:
-            arr = random_crop_arr(pil_image, self.img_size)
+            img_arr = random_crop_arr(pil_image, self.img_size)
+            mask_arr = random_crop_arr(pil_mask, self.img_size) if pil_mask else None
         else:
-            arr = center_crop_arr(pil_image, self.img_size)
+            img_arr = center_crop_arr(pil_image, self.img_size)
+            mask_arr = center_crop_arr(pil_mask, self.img_size) if pil_mask else None
 
+        # 随机翻转
         if self.random_flip and random.random() < 0.5:
-            arr = arr[:, ::-1]
+            img_arr = img_arr[:, ::-1]
+            if mask_arr is not None:
+                mask_arr = mask_arr[:, ::-1]
 
-        arr = arr.astype(np.float32) / 127.5 - 1
+        # 归一化
+        img_arr = img_arr.astype(np.float32) / 127.5 - 1
+        if mask_arr is not None:
+            mask_arr = mask_arr.astype(np.float32) / 255.0
 
-        # 如果有目标文件夹路径，读取目标文件夹的前5张图像
-        if self.target_folder and self.target_image_paths:
-            target_image_path = self.target_image_paths[min(index, 4)]  # 选取前5张图像
-            target_image = Image.open(target_image_path)
-            target_image.load()
-            target_image = target_image.convert("RGB")
-
-            if self.random_crop:
-                target_arr = random_crop_arr(target_image, self.img_size)
-            else:
-                target_arr = center_crop_arr(target_image, self.img_size)
-
-            if self.random_flip and random.random() < 0.5:
-                target_arr = target_arr[:, ::-1]
-
-            target_arr = target_arr.astype(np.float32) / 127.5 - 1
+        # 如果使用 mask，将 mask 拼接为额外通道
+        if self.use_mask and mask_arr is not None:
+            combined_arr = np.concatenate((np.transpose(img_arr, [2, 0, 1]), mask_arr[np.newaxis, ...]), axis=0)
         else:
-            target_arr = None
+            combined_arr = np.transpose(img_arr, [2, 0, 1])
 
-        return np.transpose(arr, [2, 0, 1]), target_arr
+        return combined_arr
 
     def __len__(self):
-        return len(self.image_paths)
+        return len(self.mask_paths) if self.use_mask else len(self.image_paths)
+
+
+def split_data(data_list, split_ratio):
+    """按比例划分数据"""
+    split_index = int(len(data_list) * split_ratio)
+    return data_list[:split_index], data_list[split_index:]
 
 
 def center_crop_arr(pil_image, image_size):
@@ -164,88 +216,3 @@ def random_crop_arr(pil_image, image_size, min_crop_frac=0.8, max_crop_frac=1.0)
     crop_y = random.randrange(arr.shape[0] - image_size + 1)
     crop_x = random.randrange(arr.shape[1] - image_size + 1)
     return arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size]
-
-###################################################################
-
-
-# class IMAGENET_dataset(Dataset):
-#     def __init__(self, image_root, mode='val', class_num=None, img_size=512, random_crop=True, random_flip=False):
-#         super().__init__()
-#         if class_num is not None:
-#             self.data_dir = os.path.join(image_root, mode, IMAGENET_DIC[str(class_num)][0], '*.JPEG')
-#             self.image_paths = sorted(glob(self.data_dir))
-#         else:
-#             self.data_dir = os.path.join(image_root, mode, '*', '*.JPEG')
-#             self.image_paths = sorted(glob(self.data_dir))
-#         self.img_size = img_size
-#         self.random_crop = random_crop
-#         self.random_flip = random_flip
-#         self.class_num = class_num
-
-#     def __getitem__(self, index):
-#         f = self.image_paths[index]
-#         pil_image = Image.open(f)
-#         pil_image.load()
-#         pil_image = pil_image.convert("RGB")
-
-#         if self.random_crop:
-#             arr = random_crop_arr(pil_image, self.img_size)
-#         else:
-#             arr = center_crop_arr(pil_image, self.img_size)
-
-#         if self.random_flip and random.random() < 0.5:
-#             arr = arr[:, ::-1]
-
-#         arr = arr.astype(np.float32) / 127.5 - 1
-
-#         # y = [self.class_num, IMAGENET_DIC[str(self.class_num)][0], IMAGENET_DIC[str(self.class_num)][1]]
-#         # y = self.class_num
-
-#         return np.transpose(arr, [2, 0, 1])#, y
-
-#     def __len__(self):
-#         return len(self.image_paths)
-
-
-# def center_crop_arr(pil_image, image_size):
-#     # We are not on a new enough PIL to support the `reducing_gap`
-#     # argument, which uses BOX downsampling at powers of two first.
-#     # Thus, we do it by hand to improve downsample quality.
-#     while min(*pil_image.size) >= 2 * image_size:
-#         pil_image = pil_image.resize(
-#             tuple(x // 2 for x in pil_image.size), resample=Image.BOX
-#         )
-
-#     scale = image_size / min(*pil_image.size)
-#     pil_image = pil_image.resize(
-#         tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
-#     )
-
-#     arr = np.array(pil_image)
-#     crop_y = (arr.shape[0] - image_size) // 2
-#     crop_x = (arr.shape[1] - image_size) // 2
-#     return arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size]
-
-
-# def random_crop_arr(pil_image, image_size, min_crop_frac=0.8, max_crop_frac=1.0):
-#     min_smaller_dim_size = math.ceil(image_size / max_crop_frac)
-#     max_smaller_dim_size = math.ceil(image_size / min_crop_frac)
-#     smaller_dim_size = random.randrange(min_smaller_dim_size, max_smaller_dim_size + 1)
-
-#     # We are not on a new enough PIL to support the `reducing_gap`
-#     # argument, which uses BOX downsampling at powers of two first.
-#     # Thus, we do it by hand to improve downsample quality.
-#     while min(*pil_image.size) >= 2 * smaller_dim_size:
-#         pil_image = pil_image.resize(
-#             tuple(x // 2 for x in pil_image.size), resample=Image.BOX
-#         )
-
-#     scale = smaller_dim_size / min(*pil_image.size)
-#     pil_image = pil_image.resize(
-#         tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
-#     )
-
-#     arr = np.array(pil_image)
-#     crop_y = random.randrange(arr.shape[0] - image_size + 1)
-#     crop_x = random.randrange(arr.shape[1] - image_size + 1)
-#     return arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size]

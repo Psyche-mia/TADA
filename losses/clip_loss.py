@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as transforms
 import numpy as np
 
@@ -297,3 +298,54 @@ class CLIPLoss(torch.nn.Module):
             clip_loss += self.lambda_texture * self.cnn_feature_loss(texture_image, target_img)
 
         return clip_loss
+
+class TargetLatentLoss(torch.nn.Module):
+    def __init__(self, device, target_latents=None, latent_loss_type="cosine"):
+        """
+        Args:
+            device: 计算设备。
+            target_latents: 预计算的目标 latent 字典，格式为 {image_path: latent_tensor}。
+            latent_loss_type: latent 损失类型，可选 'cosine' 或 'l1'。
+        """
+        super(TargetLatentLoss, self).__init__()
+        self.device = device
+        self.target_latents = target_latents  # 在初始化时传入目标latent
+
+        # 定义损失函数
+        if latent_loss_type == "cosine":
+            self.latent_loss_func = lambda x, y: 1 - F.cosine_similarity(x, y).mean()
+        elif latent_loss_type == "l1":
+            self.latent_loss_func = nn.L1Loss()
+        else:
+            raise ValueError(f"Unsupported latent_loss_type: {latent_loss_type}")
+
+    def forward(self, generated_latents):
+        """
+        计算生成的 latent 与目标 latent 的损失。
+
+        Args:
+            generated_latents: 当前生成图像的 latent 表示，张量格式 (batch_size, latent_dim)。
+
+        Returns:
+            total_loss: 总的 latent 损失。
+        """
+        total_loss = 0.0
+        valid_count = 0  # 记录有效样本数
+
+        # 对目标 latent 进行计算
+        for target_latent in self.target_latents:
+            if isinstance(target_latent, list):  # 如果是 list，转化为 tensor
+                target_latent = torch.stack([torch.tensor(latent) for latent in target_latent]).to(self.device)
+            else:  # 如果已经是 tensor，直接转到 device
+                target_latent = target_latent.to(self.device)
+
+            # 计算损失
+            total_loss += self.latent_loss_func(generated_latents, target_latent)
+            valid_count += 1
+
+        # 取平均损失
+        if valid_count > 0:
+            total_loss /= valid_count
+
+        return total_loss
+

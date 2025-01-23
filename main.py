@@ -65,12 +65,15 @@ def parse_args_and_config():
     parser.add_argument('--clip_loss_w', type=int, default=3, help='Weights of CLIP loss')
     parser.add_argument('--l1_loss_w', type=float, default=0, help='Weights of L1 loss')
     parser.add_argument('--id_loss_w', type=float, default=0, help='Weights of ID loss')
+    parser.add_argument('--anomalyclip_loss_w', type=float, default=0, help='Weights of Anomaly CLIP loss')
+    parser.add_argument('--target_latent_loss_w', type=float, default=0, help='Weights of TargetLatent loss')
     parser.add_argument('--clip_model_name', type=str, default='ViT-B/16', help='ViT-B/16, ViT-B/32, RN50x16 etc')
     parser.add_argument('--lr_clip_finetune', type=float, default=2e-6, help='Initial learning rate for finetuning')
     parser.add_argument('--lr_clip_lat_opt', type=float, default=2e-2, help='Initial learning rate for latent optim')
     parser.add_argument('--n_iter', type=int, default=1, help='# of iterations of a generative process with `n_train_img` images')
     parser.add_argument('--scheduler', type=int, default=1, help='Whether to increase the learning rate')
     parser.add_argument('--sch_gamma', type=float, default=1.3, help='Scheduler gamma')
+    parser.add_argument('--latent_loss_type', type=str, default="cosine", help='TargetLatentLoss type, cosine or l1')
 
     args = parser.parse_args()
 
@@ -81,9 +84,15 @@ def parse_args_and_config():
 
     if args.clip_finetune or args.clip_finetune_eff :
         if args.edit_attr is not None:
-            args.exp = args.exp + f'_FT_{new_config.data.category}_{args.edit_attr}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_id{args.id_loss_w}_l1{args.l1_loss_w}_lr{args.lr_clip_finetune}'
+            args.exp = args.exp + f'_FT_{new_config.model.type}_{new_config.data.category}_{args.edit_attr}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_id{args.id_loss_w}_l1{args.l1_loss_w}_lr{args.lr_clip_finetune}'
+        elif args.target_latent_loss_w != 0:
+            args.exp = args.exp + f'_FT_{new_config.model.type}_{new_config.data.category}_{args.trg_txts}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_id{args.id_loss_w}_l1{args.l1_loss_w}_lr{args.lr_clip_finetune}_tll{args.target_latent_loss_w}_llt{args.latent_loss_type}'
+        elif args.anomalyclip_loss_w != 0:
+            args.exp = args.exp + f'_FT_{new_config.model.type}_{new_config.data.category}_{args.trg_txts}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_acl{args.anomalyclip_loss_w}_cl{args.clip_loss_w}_lr{args.lr_clip_finetune}'
         else:
-            args.exp = args.exp + f'_FT_{new_config.data.category}_{args.trg_txts}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_id{args.id_loss_w}_l1{args.l1_loss_w}_lr{args.lr_clip_finetune}'
+            args.exp = args.exp + f'_FT_{new_config.model.type}_{new_config.data.category}_{args.trg_txts}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_id{args.id_loss_w}_l1{args.l1_loss_w}_lr{args.lr_clip_finetune}'
+        
+            
     elif args.clip_latent_optim:
         if args.edit_attr is not None:
             args.exp = args.exp + f'_LO_{new_config.data.category}_{args.img_path.split("/")[-1].split(".")[0]}_{args.edit_attr}_t{args.t_0}_ninv{args.n_inv_step}_ngen{args.n_train_step}_id{args.id_loss_w}_l1{args.l1_loss_w}_lr{args.lr_clip_lat_opt}'
@@ -171,6 +180,8 @@ def parse_args_and_config():
 
     # add device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(device)
+    # device = torch.device('cpu')
     logging.info("Using device: {}".format(device))
     new_config.device = device
 

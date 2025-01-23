@@ -19,6 +19,50 @@ def extract(a, t, x_shape):
     out = out.reshape((bs,) + (1,) * (len(x_shape) - 1))
     return out
 
+def stable_diffusion_denoising_step(model, x, t, device, is_latent=False, is_final_step=False):
+    """
+    Process a single denoising step for Stable Diffusion.
+
+    Args:
+        model: The Stable Diffusion pipeline.
+        x: The input tensor (image or latent).
+        t: The current timestep tensor.
+        device: The device for computation (e.g., "cuda:0").
+        is_latent: Boolean indicating whether the input x is a latent tensor.
+        is_final_step: Boolean indicating whether this is the final step of the generative process.
+
+    Returns:
+        Updated latent tensor or the final image if `is_final_step` is True.
+    """
+    if not is_latent:
+        # Encode the image into latent space using the VAE
+        x = model.vae.encode(x).latent_dist.sample()
+        x = x * model.vae.config.scaling_factor  # Scale latent
+        print("Converted image to latent:", x.shape)
+
+    # Denoising step
+    batch_size, _, height, width = x.shape
+    seq_length = height * width  # Latent tokens, e.g., 784
+
+    # Create dummy embeddings with the correct shape
+    dummy_embeddings = torch.zeros((batch_size, seq_length, 768), device=device)
+    print(f"Dummy embeddings shape: {dummy_embeddings.shape}")
+
+    # Predict noise
+    noise_pred = model.unet(x, t, encoder_hidden_states=dummy_embeddings)["sample"]
+
+    # Perform the scheduler step
+    x = model.scheduler.step(noise_pred, t, x)["prev_sample"]
+    print("Updated latent after scheduler step:", x.shape)
+
+    # If it's the final step, decode the latent back to an image using the VAE
+    if is_final_step:
+        x = model.vae.decode(x / model.vae.config.scaling_factor).sample  # Scale latent back
+        print("Decoded latent back to image:", x.shape)
+
+    return x
+
+
 
 def denoising_step(xt, t, t_next, *,
                    models,

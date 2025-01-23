@@ -303,8 +303,8 @@ class DiffusionCLIP(object):
                                 break
 
     def clip_finetune_eff(self):
-        print(f"Dataset: {self.config.data.dataset}")
-        print(f"Category: {self.config.data.category}")
+        # print(f"Dataset: {self.config.data.dataset}")
+        # print(f"Category: {self.config.data.category}")
         print(self.args.exp)
         print(f'   {self.src_txts}')
         print(f'-> {self.trg_txts}')
@@ -318,7 +318,7 @@ class DiffusionCLIP(object):
         elif self.config.data.dataset == "CelebA_HQ":
             url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
         elif self.config.data.dataset in ["FFHQ", "AFHQ", "IMAGENET", "MVTec"]:
-            print("model is ok")
+            # print("model is ok")
             pass
         else:
             # print("error here 1")
@@ -381,7 +381,7 @@ class DiffusionCLIP(object):
         n = self.args.bs_train
         img_lat_pairs_dic = {}
 
-        for mode in ['train', 'test']:
+        for mode in ['train', 'test', 'target']:
             img_lat_pairs = []
             if self.args.edit_attr in ['female', 'male']:
                 self.config.data.dataset = 'GENDER'
