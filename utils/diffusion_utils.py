@@ -19,7 +19,7 @@ def extract(a, t, x_shape):
     out = out.reshape((bs,) + (1,) * (len(x_shape) - 1))
     return out
 
-def stable_diffusion_denoising_step(model, x, t, device, is_latent=False, is_final_step=False):
+def stable_diffusion_denoising_step(model, x, t, device, mode, is_latent=False, is_final_step=False):
     """
     Process a single denoising step for Stable Diffusion.
 
@@ -34,31 +34,41 @@ def stable_diffusion_denoising_step(model, x, t, device, is_latent=False, is_fin
     Returns:
         Updated latent tensor or the final image if `is_final_step` is True.
     """
+    # print(mode)
+    # print(is_final_step)
     if not is_latent:
         # Encode the image into latent space using the VAE
         x = model.vae.encode(x).latent_dist.sample()
-        x = x * model.vae.config.scaling_factor  # Scale latent
-        print("Converted image to latent:", x.shape)
+        # x = x * model.vae.config.scaling_factor  # Scale latent
+        print("image to latent:", x)
 
     # Denoising step
     batch_size, _, height, width = x.shape
     seq_length = height * width  # Latent tokens, e.g., 784
 
     # Create dummy embeddings with the correct shape
+    # TODO dummy embeddings could cause the problem that the image cannot convert back to original image
     dummy_embeddings = torch.zeros((batch_size, seq_length, 768), device=device)
-    print(f"Dummy embeddings shape: {dummy_embeddings.shape}")
+    # print(f"Dummy embeddings shape: {dummy_embeddings.shape}")
 
     # Predict noise
-    noise_pred = model.unet(x, t, encoder_hidden_states=dummy_embeddings)["sample"]
-
-    # Perform the scheduler step
-    x = model.scheduler.step(noise_pred, t, x)["prev_sample"]
-    print("Updated latent after scheduler step:", x.shape)
+    with torch.no_grad():
+        noise_pred = model.unet(x, t, encoder_hidden_states=None)["sample"]
+        # noise_pred = model.unet(x, t, encoder_hidden_states=dummy_embeddings)["sample"]
+        # noise_pred = model.unet(x, t)["sample"]
+    print("noise prediction: ", noise_pred)
+    if mode == "denoise":
+        # Perform the scheduler step
+        x = model.scheduler.step(noise_pred, t, x)["prev_sample"]
+    elif mode == "generate":
+        x = model.scheduler.add_noise(x, noise_pred, t)
+    # print("Updated latent after scheduler step:", x.shape)
 
     # If it's the final step, decode the latent back to an image using the VAE
     if is_final_step:
-        x = model.vae.decode(x / model.vae.config.scaling_factor).sample  # Scale latent back
-        print("Decoded latent back to image:", x.shape)
+        # x = model.vae.decode(x / model.vae.config.scaling_factor).sample  # Scale latent back
+        x = model.vae.decode(x).sample  # Scale latent back
+        # print("Decoded latent back to image:", x.shape)
 
     return x
 

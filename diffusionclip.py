@@ -20,7 +20,7 @@ from datasets.data_utils import get_dataset, get_dataloader
 from configs.paths_config import DATASET_PATHS, MODEL_PATHS, HYBRID_MODEL_PATHS, HYBRID_CONFIG, ANOMALY_MODEL_PATHS
 from datasets.imagenet_dic import IMAGENET_DIC
 from utils.align_utils import run_alignment
-from diffusers import StableDiffusionImageVariationPipeline
+from diffusers import StableDiffusionImageVariationPipeline, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, LatentConsistencyModelImg2ImgPipeline
 from torchvision import transforms
 from torchvision.transforms import ToPILImage
 
@@ -98,7 +98,10 @@ class DiffusionCLIP(object):
 
         if self.config.model.type == "stable_diffusion":
             local_model_path = "pretrained/sd-image-variations-diffusers"
+            # local_model_path = "pretrained/stable-diffusion-v1-1"
+            # model = LatentConsistencyModelImg2ImgPipeline.from_pretrained(local_model_path, revision="v2.0")
             model = StableDiffusionImageVariationPipeline.from_pretrained(local_model_path, revision="v2.0")
+            # model = StableDiffusionImg2ImgPipeline.from_pretrained(local_model_path, revision="v2.0")
             print("Stable Diffusion Model loaded.")   
         elif self.config.data.dataset in ["CelebA_HQ", "LSUN"]:
             model = DDPM(self.config)
@@ -161,6 +164,20 @@ class DiffusionCLIP(object):
 
         n = self.args.bs_train
         img_lat_pairs_dic = {}
+        
+        # Stable diffusion model to evaluation mode
+        model.unet.eval()
+        model.vae.eval()
+        model.scheduler
+        # model.text_encoder.eval()
+        if model.safety_checker is not None:
+            model.safety_checker.eval()
+        model.scheduler.set_timesteps(num_inference_steps=self.args.n_inv_step)
+        
+        print("Scheduler timesteps:", model.scheduler.timesteps)
+        print("Number of timesteps:", len(model.scheduler.timesteps))
+        print("First and last timestep:", model.scheduler.timesteps[0].item(), model.scheduler.timesteps[-1].item())
+
 
         for mode in ['train', 'test']:
             img_lat_pairs = []
@@ -219,8 +236,9 @@ class DiffusionCLIP(object):
             # uncond_embeddings = model.text_encoder(model.tokenizer([""], return_tensors="pt").input_ids.to(self.device))[0]
             for step, img in enumerate(loader):
                 if self.config.model.type == "stable_diffusion":
+                    x0 = img.to(self.config.device)
                     to_pil = ToPILImage()
-                    print("image shape: ", img.shape)
+                    # print("image shape: ", img.shape)
                     # convert rgba to rgb and convert tensor to PIL then process the transform and convert back to tensor
                     x0 = tform(to_pil(img.squeeze(0)[:3, :, :])).to(self.config.device).unsqueeze(0)
                     # Save the image in 'result/' directory
@@ -230,84 +248,94 @@ class DiffusionCLIP(object):
                 else:
                     x0 = img.to(self.config.device)
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
-
+                                # test model output
+                out = model(x0, guidance_scale=3)
+                print("save image")
+                tvu.save(out, "test.png")
+                
                 x = x0.clone()
-                # Stable diffusion model to evaluation mode
-                model.unet.eval()
-                model.vae.eval()
-                model.scheduler.set_timesteps(num_inference_steps=self.args.n_inv_step)
                 time_s = time.time()
                 with torch.no_grad():
-                    with tqdm(total=len(seq_inv), desc=f"Inversion process {mode} {step}") as progress_bar:
-                        for it, (i, j) in enumerate(zip((seq_inv_next[1:]), (seq_inv[1:]))):
-                            t = (torch.ones(n) * i).to(self.device)
-                            # print(type(t))
-                            t_prev = (torch.ones(n) * j).to(self.device)
-                            
-                            # add stabel diffusion method
-                            if self.config.model.type == "stable_diffusion":
-                                # Check if the current input is an image or latent
-                                x = stable_diffusion_denoising_step(model, x, t.long(), device=self.device, is_latent=(it > 0))
-                                # Encode the image into latent space using the VAE
-                                # x = model.vae.encode(x).latent_dist.sample()
-                                # print("x shape before scaling: ", x.shape)
-                                # # print(type(t))
-                                # x = x * model.vae.config.scaling_factor  # Scale latent
-                                # print("x shape after scaling: ", x.shape)
-                                # # Denoising step
-                                # # Example latent tensor x (e.g., after passing through the VAE)
-                                # batch_size, _, height, width = x.shape
-                                # seq_length = height * width  # Latent tokens, e.g., 784
-
-                                # # Create dummy embeddings with the correct shape
-                                # dummy_embeddings = torch.zeros((batch_size, seq_length, 768), device=x.device)  # Use 768, not 320
-
-                                # # Print the shape to verify
-                                # print(f"Dummy embeddings shape: {dummy_embeddings.shape}")
-                                # # Pass to UNet
-                                # noise_pred = model.unet(x, t, encoder_hidden_states=dummy_embeddings)["sample"]
-                                # # t = t.long()  # Cast to long
+                    if self.config.model.type == "stable_diffusion":
+                        for t in tqdm(reversed(model.scheduler.timesteps)):
+                            # print(model.scheduler.timesteps[-1], model.scheduler.timesteps)
+                            x = stable_diffusion_denoising_step(model, x, t.long(), mode="generate", device=self.device, is_latent=(t > model.scheduler.timesteps[-1]))
+                    else:
+                        with tqdm(total=len(seq_inv), desc=f"Inversion process {mode} {step}") as progress_bar:
+                            for it, (i, j) in enumerate(zip((seq_inv_next[1:]), (seq_inv[1:]))):
+                                t = (torch.ones(n) * i).to(self.device)
                                 # print(type(t))
-                                # # print("noise prediction", noise_pred)
-                                # x = model.scheduler.step(noise_pred, t, x)["prev_sample"]
-                            else:
-                                x = denoising_step(x, t=t, t_next=t_prev, models=model,
-                                               logvars=self.logvar,
-                                               sampling_type='ddim',
-                                               b=self.betas,
-                                               eta=0,
-                                               learn_sigma=learn_sigma)
+                                t_prev = (torch.ones(n) * j).to(self.device)
+                                
+                                # add stabel diffusion method
+                                #if self.config.model.type == "stable_diffusion":
+                                    # Check if the current input is an image or latent
+                                    # x = stable_diffusion_denoising_step(model, x, t.long(), mode="generate", device=self.device, is_latent=(it > 0))
+                                    # Encode the image into latent space using the VAE
+                                    # x = model.vae.encode(x).latent_dist.sample()
+                                    # print("x shape before scaling: ", x.shape)
+                                    # # print(type(t))
+                                    # x = x * model.vae.config.scaling_factor  # Scale latent
+                                    # print("x shape after scaling: ", x.shape)
+                                    # # Denoising step
+                                    # # Example latent tensor x (e.g., after passing through the VAE)
+                                    # batch_size, _, height, width = x.shape
+                                    # seq_length = height * width  # Latent tokens, e.g., 784
 
-                            progress_bar.update(1)
+                                    # # Create dummy embeddings with the correct shape
+                                    # dummy_embeddings = torch.zeros((batch_size, seq_length, 768), device=x.device)  # Use 768, not 320
+
+                                    # # Print the shape to verify
+                                    # print(f"Dummy embeddings shape: {dummy_embeddings.shape}")
+                                    # # Pass to UNet
+                                    # noise_pred = model.unet(x, t, encoder_hidden_states=dummy_embeddings)["sample"]
+                                    # # t = t.long()  # Cast to long
+                                    # print(type(t))
+                                    # # print("noise prediction", noise_pred)
+                                    # x = model.scheduler.step(noise_pred, t, x)["prev_sample"]
+                                #else:
+                                x = denoising_step(x, t=t, t_next=t_prev, models=model,
+                                            logvars=self.logvar,
+                                            sampling_type='ddim',
+                                            b=self.betas,
+                                            eta=0,
+                                            learn_sigma=learn_sigma)
+
+                                progress_bar.update(1)
                     time_e = time.time()
                     print(f'{time_e - time_s} seconds')
-                    print("latent x:", x)
+                    # print("latent x:", x)
                     x_lat = x.clone()
                     tvu.save_image((x_lat + 1) * 0.5, os.path.join(self.args.image_folder,
                                                                    f'{mode}_{step}_1_lat_ninv{self.args.n_inv_step}.png'))
-
-                    with tqdm(total=len(seq_inv), desc=f"Generative process {mode} {step}") as progress_bar:
-                        time_s = time.time()
-                        # seq_inv and seq_inv_next are reversed
-                        for it, (i, j) in enumerate(zip(reversed((seq_inv)), reversed((seq_inv_next)))):
-                            t = (torch.ones(n) * i).to(self.device)
-                            t_next = (torch.ones(n) * j).to(self.device)
-                            
-                            # add stabel diffusion method
-                            if self.config.model.type == "stable_diffusion":
-                                # Denoising step
-                                # If it's the last step, mark as final step
-                                is_final_step = (it == len(seq_inv) - 1)
+                    if self.config.model.type == "stable_diffusion":
+                        for t in tqdm(model.scheduler.timesteps):
+                            is_final_step = (t == model.scheduler.timesteps[-1])
+                            x = stable_diffusion_denoising_step(model, x, t.long(), mode="denoise", device=self.device, is_latent=True, is_final_step=is_final_step)
+                            print(f"Timestep {t.item()}: x min {x.min().item()}, x max {x.max().item()}")
+                    else:
+                        with tqdm(total=len(seq_inv), desc=f"Generative process {mode} {step}") as progress_bar:
+                            time_s = time.time()
+                            # seq_inv and seq_inv_next are reversed
+                            for it, (i, j) in enumerate(zip(reversed((seq_inv)), reversed((seq_inv_next)))):
+                                t = (torch.ones(n) * i).to(self.device)
+                                t_next = (torch.ones(n) * j).to(self.device)
                                 
-                                x = stable_diffusion_denoising_step(model, x, t.long(), self.device, is_latent=True, is_final_step=is_final_step)
-                            else:
+                                # add stabel diffusion method
+                                # if self.config.model.type == "stable_diffusion":
+                                #     # Denoising step
+                                #     # If it's the last step, mark as final step
+                                #     is_final_step = (it == len(seq_inv) - 1)
+                                    
+                                #     x = stable_diffusion_denoising_step(model, x, t.long(), mode="denoise", device=self.device, is_latent=True, is_final_step=is_final_step)
+                                # else:
                                 x = denoising_step(x, t=t, t_next=t_prev, models=model,
-                                               logvars=self.logvar,
-                                               sampling_type='ddim',
-                                               b=self.betas,
-                                               eta=0,
-                                               learn_sigma=learn_sigma)
-                            progress_bar.update(1)
+                                            logvars=self.logvar,
+                                            sampling_type='ddim',
+                                            b=self.betas,
+                                            eta=0,
+                                            learn_sigma=learn_sigma)
+                                progress_bar.update(1)
                         time_e = time.time()
                         print(f'{time_e - time_s} seconds')
 

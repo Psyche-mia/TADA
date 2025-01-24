@@ -4,7 +4,7 @@ DATASET_PATHS = {
 	'AFHQ': 'data/afhq',
 	'LSUN':  'data/lsun',
     'IMAGENET': 'data/imagenet/',
-    'MVTec': '/root/IAD_datasets/Defect_Spectrum/DS-MVTec/',
+    'MVTec': '/mnt/IAD_datasets/Defect_Spectrum/DS-MVTec/',
 }
 
 MODEL_PATHS = {
